@@ -131,6 +131,8 @@
 
     .result li {
       padding: 8px 0;
+      display: flex;
+      justify-content: space-between;
     }
 
     .toast {
@@ -264,190 +266,134 @@
       if (!trimmedHash) {
         elements.hashInput.nextElementSibling.style.display = 'block';
         showToast('Hash is required');
-        return [];
+        return { types: [], confidence: 0 };
       }
 
       // Basic salt validation: allow alphanumeric and common special chars, no length restriction
       if (trimmedSalt && !/^[A-Za-z0-9+/=.-]*$/.test(trimmedSalt)) {
         elements.saltInput.nextElementSibling.style.display = 'block';
         showToast('Invalid salt format');
-        return [];
+        return { types: [], confidence: 0 };
       }
 
       const hashTypes = [
-        { name: 'MD5', length: 32, regex: /^[a-f0-9]{32}$/i, unsalted: true },
-        { name: 'SHA-1', length: 40, regex: /^[a-f0-9]{40}$/i, unsalted: true },
-        { name: 'SHA-224', length: 56, regex: /^[a-f0-9]{56}$/i, unsalted: true },
-        { name: 'SHA-256', length: 64, regex: /^[a-f0-9]{64}$/i, unsalted: true },
-        { name: 'SHA-384', length: 96, regex: /^[a-f0-9]{96}$/i, unsalted: true },
-        { name: 'SHA-512', length: 128, regex: /^[a-f0-9]{128}$/i, unsalted: true },
-        { name: 'SHA3-224', length: 56, regex: /^[a-f0-9]{56}$/i, unsalted: true },
-        { name: 'SHA3-256', length: 64, regex: /^[a-f0-9]{64}$/i, unsalted: true },
-        { name: 'SHA3-384', length: 96, regex: /^[a-f0-9]{96}$/i, unsalted: true },
-        { name: 'SHA3-512', length: 128, regex: /^[a-f0-9]{128}$/i, unsalted: true },
-        { name: 'RIPEMD-160', length: 40, regex: /^[a-f0-9]{40}$/i, unsalted: true },
-        { name: 'Whirlpool', length: 128, regex: /^[a-f0-9]{128}$/i, unsalted: true },
-        { name: 'MySQL 4.1+', length: 40, regex: /^[a-f0-9]{40}$/i, unsalted: true },
-        { name: 'MySQL 3.x', length: 16, regex: /^[a-f0-9]{16}$/i, unsalted: true },
-        { name: 'NTLM', length: 32, regex: /^[a-f0-9]{32}$/i, unsalted: true },
-        { name: 'LM', length: 32, regex: /^[a-f0-9]{32}$/i, unsalted: true },
-        { name: 'CRC32', length: 8, regex: /^[a-f0-9]{8}$/i, unsalted: true },
-        { name: 'Adler32', length: 8, regex: /^[a-f0-9]{8}$/i, unsalted: true },
-        { name: 'bcrypt', length: 60, regex: /^\$2[ayb]\$[0-9]{2}\$[A-Za-z0-9./]{53}$/, salted: true },
-        { name: 'scrypt', length: 0, regex: /^\$s0\$[0-9a-f]{5}\$[A-Za-z0-9+/]{43}\$[A-Za-z0-9+/]{43}$/i, salted: true },
-        { name: 'PBKDF2', length: 64, regex: /^[a-f0-9]{64}$/i, salted: true },
-        { name: 'HMAC-MD5', length: 32, regex: /^[a-f0-9]{32}$/i, salted: true },
-        { name: 'HMAC-SHA1', length: 40, regex: /^[a-f0-9]{40}$/i, salted: true },
-        { name: 'HMAC-SHA256', length: 64, regex: /^[a-f0-9]{64}$/i, salted: true },
-        { name: 'MD4', length: 32, regex: /^[a-f0-9]{32}$/i, unsalted: true },
-        { name: 'MD2', length: 32, regex: /^[a-f0-9]{32}$/i, unsalted: true },
-        { name: 'SHA-0', length: 40, regex: /^[a-f0-9]{40}$/i, unsalted: true },
-        { name: 'RIPEMD-128', length: 32, regex: /^[a-f0-9]{32}$/i, unsalted: true },
-        { name: 'RIPEMD-256', length: 64, regex: /^[a-f0-9]{64}$/i, unsalted: true },
-        { name: 'RIPEMD-320', length: 80, regex: /^[a-f0-9]{80}$/i, unsalted: true },
-        { name: 'HAVAL-128', length: 32, regex: /^[a-f0-9]{32}$/i, unsalted: true },
-        { name: 'HAVAL-160', length: 40, regex: /^[a-f0-9]{40}$/i, unsalted: true },
-        { name: 'HAVAL-192', length: 48, regex: /^[a-f0-9]{48}$/i, unsalted: true },
-        { name: 'HAVAL-224', length: 56, regex: /^[a-f0-9]{56}$/i, unsalted: true },
-        { name: 'HAVAL-256', length: 64, regex: /^[a-f0-9]{64}$/i, unsalted: true },
-        { name: 'GOST', length: 64, regex: /^[a-f0-9]{64}$/i, unsalted: true },
-        { name: 'Tiger-192', length: 48, regex: /^[a-f0-9]{48}$/i, unsalted: true },
-        { name: 'Tiger-160', length: 40, regex: /^[a-f0-9]{40}$/i, unsalted: true },
-        { name: 'Tiger-128', length: 32, regex: /^[a-f0-9]{32}$/i, unsalted: true },
-        { name: 'Skein-512', length: 128, regex: /^[a-f0-9]{128}$/i, unsalted: true },
-        { name: 'BLAKE2b-512', length: 128, regex: /^[a-f0-9]{128}$/i, unsalted: true },
-        { name: 'BLAKE2s-256', length: 64, regex: /^[a-f0-9]{64}$/i, unsalted: true },
-        { name: 'BLAKE3-256', length: 64, regex: /^[a-f0-9]{64}$/i, unsalted: true },
-        { name: 'PANAMA', length: 64, regex: /^[a-f0-9]{64}$/i, unsalted: true },
-        { name: 'SHA-512/224', length: 56, regex: /^[a-f0-9]{56}$/i, unsalted: true },
-        { name: 'SHA-512/256', length: 64, regex: /^[a-f0-9]{64}$/i, unsalted: true },
-        { name: 'SHA2-224', length: 56, regex: /^[a-f0-9]{56}$/i, unsalted: true },
-        { name: 'MySQL323', length: 16, regex: /^[a-f0-9]{16}$/i, unsalted: true },
-        { name: 'md5crypt (Unix)', length: 0, regex: /^\$1\$[A-Za-z0-9./]{1,8}\$[A-Za-z0-9./]{22}$/, salted: true },
-        { name: 'sha512crypt (Unix)', length: 0, regex: /^\$6\$[A-Za-z0-9./]{1,16}\$[A-Za-z0-9./]{86}$/, salted: true },
-        { name: 'descrypt (Unix)', length: 13, regex: /^[A-Za-z0-9./]{13}$/, salted: true },
-        { name: 'Apache $apr1$ MD5', length: 0, regex: /^\$apr1\$[A-Za-z0-9./]{1,8}\$[A-Za-z0-9./]{22}$/, salted: true },
-        { name: 'phpass (WordPress/Joomla)', length: 0, regex: /^\$[PH]\$[A-Za-z0-9./]{31}$/, salted: true },
-        { name: 'Argon2i', length: 0, regex: /^\$argon2i\$v=\d+\$m=\d+,t=\d+,p=\d+\$[A-Za-z0-9+/=]{22}\$[A-Za-z0-9+/=]{43}$/, salted: true },
-        { name: 'Argon2d', length: 0, regex: /^\$argon2d\$v=\d+\$m=\d+,t=\d+,p=\d+\$[A-Za-z0-9+/=]{22}\$[A-Za-z0-9+/=]{43}$/, salted: true },
-        { name: 'Argon2id', length: 0, regex: /^\$argon2id\$v=\d+\$m=\d+,t=\d+,p=\d+\$[A-Za-z0-9+/=]{22}\$[A-Za-z0-9+/=]{43}$/, salted: true },
-        { name: 'Django (SHA-256)', length: 0, regex: /^sha256\$[A-Za-z0-9]+\$[a-f0-9]{64}$/i, salted: true },
-        { name: 'Django (SHA-1)', length: 0, regex: /^sha1\$[A-Za-z0-9]+\$[a-f0-9]{40}$/i, salted: true },
-        { name: 'MSSQL (2000)', length: 0, regex: /^0x0100[a-f0-9]{80}$/i, salted: true },
-        { name: 'MSSQL (2005)', length: 0, regex: /^0x0100[a-f0-9]{80}$/i, salted: true },
-        { name: 'Oracle 11g/12c', length: 0, regex: /^[a-f0-9]{40}:[a-f0-9]{20}$/i, salted: true },
-        { name: 'PostgreSQL MD5', length: 0, regex: /^md5[a-f0-9]{32}$/i, salted: true },
-        { name: 'Salted MD5', length: 0, regex: /^[a-f0-9]{32}:.+$/i, salted: true },
-        { name: 'Salted SHA-256', length: 0, regex: /^[a-f0-9]{64}:.+$/i, salted: true },
-        { name: 'Salted SHA-512', length: 0, regex: /^[a-f0-9]{128}:.+$/i, salted: true },
-        { name: 'Cisco-PIX MD5', length: 16, regex: /^[A-Za-z0-9./]{16}$/, salted: true },
-        { name: 'Cisco-ASA MD5', length: 0, regex: /^[A-Za-z0-9./]{16}$/, salted: true },
-        { name: 'SAP CODVN B (BCODE)', length: 40, regex: /^[a-f0-9]{40}$/i, unsalted: true },
-        { name: 'SAP CODVN F/G (PASSCODE)', length: 40, regex: /^[a-f0-9]{40}$/i, salted: true },
-        { name: 'Lotus Notes/Domino 5', length: 32, regex: /^[a-f0-9]{32}$/i, unsalted: true },
-        { name: 'Lotus Notes/Domino 6', length: 40, regex: /^[a-f0-9]{40}$/i, salted: true },
-        { name: 'BSDi Crypt', length: 0, regex: /^_[A-Za-z0-9./]{19}$/, salted: true },
-        { name: 'Juniper Netscreen/SSG', length: 0, regex: /^[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+$/i, salted: true },
-        { name: 'FortiGate (FortiOS)', length: 47, regex: /^[A-Za-z0-9+/=]{47}$/, salted: true },
-        { name: 'Samsung Android Password/PIN', length: 0, regex: /^[a-f0-9]{40}\*[0-9]{1,}$/i, salted: true },
-        { name: 'PeopleSoft', length: 28, regex: /^[A-Za-z0-9+/=]{28}$/, salted: true },
-        { name: '7-Zip', length: 0, regex: /^\$7z\$[0-9]+\$[0-9]+\$[0-9]+\$[0-9]+\$[0-9]+\$[0-9]+\$[A-Za-z0-9+/=]+\$[A-Za-z0-9+/=]+$/i, salted: true },
-        { name: 'RAR3-hp', length: 0, regex: /^\$rar3\$[0-9]+\*[A-Za-z0-9+/=]+\*[A-Za-z0-9+/=]+$/i, salted: true },
-        { name: 'Kerberos 5 AS-REQ Pre-Auth', length: 0, regex: /^\$krb5pa\$[0-9]+\$[A-Za-z0-9.]+\$[A-Za-z0-9+/=]+\$[A-Za-z0-9+/=]+$/i, salted: true },
-        { name: 'NetNTLMv1', length: 0, regex: /^[a-f0-9]{48}$/i, salted: true },
-        { name: 'NetNTLMv2', length: 0, regex: /^[A-Za-z0-9]+\$[a-f0-9]{16}\$[a-f0-9]{32}\$[a-f0-9]{32}$/i, salted: true },
-        { name: 'iSCSI CHAP', length: 0, regex: /^[a-f0-9]{32}:[a-f0-9]{32}:[a-f0-9]{32}$/i, salted: true },
-        { name: 'WPA-PBKDF2-PMKID', length: 0, regex: /^[a-f0-9]{256}$/i, salted: true },
-        { name: 'RACF', length: 16, regex: /^[a-f0-9]{16}$/i, unsalted: true },
-        { name: 'GRUB 2', length: 0, regex: /^grub\.pbkdf2\.sha512\.[0-9]+\.[a-f0-9]+\.[a-f0-9]+$/i, salted: true },
-        { name: 'DPAPI masterkey file v1', length: 0, regex: /^\$DPAPI\$v1\$[a-f0-9]+\$[a-f0-9]+\$[a-f0-9]+\$[a-f0-9]+$/i, salted: true },
-        { name: 'macOS v10.8+', length: 0, regex: /^\$ml\$[0-9]+\$[a-f0-9]{128}\$[a-f0-9]{96}$/i, salted: true },
-        { name: 'SIP digest authentication (MD5)', length: 32, regex: /^[a-f0-9]{32}$/i, salted: true },
-        { name: 'Cram MD5', length: 0, regex: /^\$[a-f0-9]{32}\$[a-f0-9]{32}$/i, salted: true },
-        { name: 'JWT (JSON Web Token)', length: 0, regex: /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/i, salted: true },
-        { name: 'Electrum Wallet', length: 0, regex: /^\$electrum\$[0-9]+\$[a-f0-9]+\$[a-f0-9]+$/i, salted: true },
-        { name: 'Android Backup', length: 0, regex: /^\$ab\$[0-9]+\$[a-f0-9]+\$[a-f0-9]+$/i, salted: true },
-        { name: 'CRC32B', length: 8, regex: /^[a-f0-9]{8}$/i, unsalted: true },
-        { name: 'FNV-1', length: 8, regex: /^[a-f0-9]{8}$/i, unsalted: true },
-        { name: 'MurmurHash3', length: 8, regex: /^[a-f0-9]{8}$/i, unsalted: true },
-        { name: 'xxHash32', length: 8, regex: /^[a-f0-9]{8}$/i, unsalted: true },
-        { name: 'xxHash64', length: 16, regex: /^[a-f0-9]{16}$/i, unsalted: true },
-        { name: 'Joomla < 2.5.18', length: 0, regex: /^[a-f0-9]{32}:[A-Za-z0-9]{32}$/i, salted: true },
-        { name: 'osCommerce', length: 0, regex: /^[a-f0-9]{32}:[A-Za-z0-9]{2}$/i, salted: true },
-        { name: 'IPB2+ (Invision Power Board)', length: 0, regex: /^[a-f0-9]{32}:[a-f0-9]{8}$/i, salted: true },
-        { name: 'MyBB', length: 0, regex: /^[a-f0-9]{32}:[a-f0-9]{8}$/i, salted: true },
-        { name: 'vBulletin < 3.8.5', length: 32, regex: /^[a-f0-9]{32}$/i, salted: true },
-        { name: 'SMF > v1.1', length: 40, regex: /^[a-f0-9]{40}:[a-f0-9]{1,}$/i, salted: true },
-        { name: 'Redmine', length: 40, regex: /^[a-f0-9]{40}:[a-f0-9]{8,}$/i, salted: true },
-        { name: 'ArubaOS', length: 64, regex: /^[a-f0-9]{64}$/i, unsalted: true },
-        { name: 'Cisco-IOS SHA256', length: 0, regex: /^\$5\$[A-Za-z0-9+/=]+\$[A-Za-z0-9+/=]+$/i, salted: true },
-        { name: 'Cisco-IOS $8$ (PBKDF2-SHA256)', length: 0, regex: /^\$8\$[A-Za-z0-9+/=]+\$[A-Za-z0-9+/=]+$/i, salted: true },
-        { name: 'Cisco-IOS $9$ (scrypt)', length: 0, regex: /^\$9\$[A-Za-z0-9+/=]+$/i, salted: true },
-        { name: 'SolarWinds Serv-U', length: 32, regex: /^[a-f0-9]{32}$/i, salted: true },
-        { name: 'Half MD5', length: 16, regex: /^[a-f0-9]{16}$/i, unsalted: true },
-        { name: 'Netscape LDAP SHA/SSHA', length: 0, regex: /^\{SHA\}[A-Za-z0-9+/=]{28}$/i, salted: true },
-        { name: 'SSHA-256 (LDAP)', length: 0, regex: /^\{SSHA256\}[A-Za-z0-9+/=]{44}$/i, salted: true },
-        { name: 'SSHA-512 (LDAP)', length: 0, regex: /^\{SSHA512\}[A-Za-z0-9+/=]{88}$/i, salted: true },
-        { name: 'Domain Cached Credentials (DCC)', length: 0, regex: /^[a-f0-9]{32}:[A-Za-z0-9]+$/i, salted: true },
-        { name: 'md5($pass.$salt)', length: 0, regex: /^[a-f0-9]{32}:.+$/i, salted: true },
-        { name: 'sha1($pass.$salt)', length: 0, regex: /^[a-f0-9]{40}:.+$/i, salted: true },
-        { name: 'sha256($pass.$salt)', length: 0, regex: /^[a-f0-9]{64}:.+$/i, salted: true },
-        { name: 'sha512($pass.$salt)', length: 0, regex: /^[a-f0-9]{128}:.+$/i, salted: true },
-        { name: 'HMAC-SHA512 (key = $pass)', length: 0, regex: /^[a-f0-9]{128}:.+$/i, salted: true },
-        { name: 'PBKDF2-HMAC-SHA256', length: 0, regex: /^sha256:[0-9]+:[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+$/i, salted: true },
-        { name: 'PBKDF2-HMAC-SHA512', length: 0, regex: /^sha512:[0-9]+:[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+$/i, salted: true },
-        { name: 'Drupal7', length: 0, regex: /^\$S\$[A-Za-z0-9./]{52}$/, salted: true },
-        { name: 'Episerver', length: 0, regex: /^\$episerver\$\*0\*[A-Za-z0-9+/=]+\*[A-Za-z0-9+/=]+$/i, salted: true },
-        { name: 'hMailServer', length: 0, regex: /^[a-f0-9]{40}:[a-f0-9]{8}$/i, salted: true },
-        { name: 'Skype', length: 0, regex: /^[a-f0-9]{32}:.+$/i, salted: true }
+        // Common hash types (higher weight)
+        { name: 'MD5', length: 32, regex: /^[a-f0-9]{32}$/i, salted: false, weight: 0.9 },
+        { name: 'SHA-1', length: 40, regex: /^[a-f0-9]{40}$/i, salted: false, weight: 0.85 },
+        { name: 'SHA-256', length: 64, regex: /^[a-f0-9]{64}$/i, salted: false, weight: 0.9 },
+        { name: 'SHA-512', length: 128, regex: /^[a-f0-9]{128}$/i, salted: false, weight: 0.85 },
+        { name: 'bcrypt', length: 60, regex: /^\$2[ayb]\$[0-9]{2}\$[A-Za-z0-9./]{53}$/, salted: true, weight: 0.95 },
+        { name: 'Argon2i', length: 0, regex: /^\$argon2i\$v=\d+\$m=\d+,t=\d+,p=\d+\$[A-Za-z0-9+/=]{22}\$[A-Za-z0-9+/=]{43}$/, salted: true, weight: 0.9 },
+        { name: 'Argon2id', length: 0, regex: /^\$argon2id\$v=\d+\$m=\d+,t=\d+,p=\d+\$[A-Za-z0-9+/=]{22}\$[A-Za-z0-9+/=]{43}$/, salted: true, weight: 0.9 },
+        { name: 'md5crypt (Unix)', length: 0, regex: /^\$1\$[A-Za-z0-9./]{1,8}\$[A-Za-z0-9./]{22}$/, salted: true, weight: 0.85 },
+        { name: 'sha512crypt (Unix)', length: 0, regex: /^\$6\$[A-Za-z0-9./]{1,16}\$[A-Za-z0-9./]{86}$/, salted: true, weight: 0.85 },
+        { name: 'Django (SHA-256)', length: 0, regex: /^sha256\$[A-Za-z0-9]+\$[a-f0-9]{64}$/i, salted: true, weight: 0.8 },
+        // Less common hash types (lower weight)
+        { name: 'SHA-224', length: 56, regex: /^[a-f0-9]{56}$/i, salted: false, weight: 0.7 },
+        { name: 'SHA-384', length: 96, regex: /^[a-f0-9]{96}$/i, salted: false, weight: 0.7 },
+        { name: 'SHA3-256', length: 64, regex: /^[a-f0-9]{64}$/i, salted: false, weight: 0.65 },
+        { name: 'SHA3-512', length: 128, regex: /^[a-f0-9]{128}$/i, salted: false, weight: 0.65 },
+        { name: 'NTLM', length: 32, regex: /^[a-f0-9]{32}$/i, salted: false, weight: 0.75 },
+        { name: 'MySQL 4.1+', length: 40, regex: /^[a-f0-9]{40}$/i, salted: false, weight: 0.7 },
+        { name: 'Salted SHA-256', length: 0, regex: /^[a-f0-9]{64}:.+$/i, salted: true, weight: 0.8 },
+        { name: 'Salted SHA-512', length: 0, regex: /^[a-f0-9]{128}:.+$/i, salted: true, weight: 0.8 },
+        // Rare hash types (lowest weight)
+        { name: 'RIPEMD-160', length: 40, regex: /^[a-f0-9]{40}$/i, salted: false, weight: 0.5 },
+        { name: 'Whirlpool', length: 128, regex: /^[a-f0-9]{128}$/i, salted: false, weight: 0.4 },
+        { name: 'HAVAL-256', length: 64, regex: /^[a-f0-9]{64}$/i, salted: false, weight: 0.3 },
+        { name: 'BLAKE2b-512', length: 128, regex: /^[a-f0-9]{128}$/i, salted: false, weight: 0.3 },
+        { name: 'BLAKE3-256', length: 64, regex: /^[a-f0-9]{64}$/i, salted: false, weight: 0.3 }
       ];
 
-      const possibleTypes = hashTypes.filter(type => {
-        // If salt is provided, only consider salted hash types
+      let possibleTypes = hashTypes.filter(type => {
+        // If salt is provided, only consider salted hash types or formats with embedded salt
         if (trimmedSalt && !type.salted) return false;
-        // If no salt is provided, only consider unsalted hash types or formats that embed salt
+        // If no salt is provided, only consider unsalted hash types or formats with embedded salt
         if (!trimmedSalt && type.salted && !type.regex.source.includes('\\$') && !type.regex.source.includes(':')) return false;
-        return (type.length === 0 || type.length === trimmedHash.length) && type.regex.test(trimmedHash);
+        // Check length and regex
+        const lengthMatch = type.length === 0 || type.length === trimmedHash.length;
+        const regexMatch = type.regex.test(trimmedHash);
+        return lengthMatch && regexMatch;
       });
+
+      // Additional contextual checks to improve accuracy
+      possibleTypes = possibleTypes.filter(type => {
+        if (type.name === 'bcrypt') {
+          // Ensure bcrypt has valid cost factor (04-31)
+          const cost = parseInt(trimmedHash.split('$')[2], 10);
+          return cost >= 4 && cost <= 31;
+        }
+        if (type.name.startsWith('Argon2')) {
+          // Ensure Argon2 has valid parameters
+          const parts = trimmedHash.split('$');
+          if (parts.length !== 6) return false;
+          const params = parts[3].split(',');
+          return params.length === 3 && params.every(p => p.includes('=') && !isNaN(parseInt(p.split('=')[1])));
+        }
+        if (type.name.includes('Unix')) {
+          // Ensure Unix crypt formats have valid salt lengths
+          const salt = trimmedHash.split('$')[2];
+          return salt.length >= 1 && salt.length <= (type.name.includes('sha512') ? 16 : 8);
+        }
+        return true;
+      });
+
+      // Calculate percentage probabilities
+      const totalWeight = possibleTypes.reduce((sum, type) => sum + type.weight, 0);
+      possibleTypes = possibleTypes.map(type => ({
+        name: type.name,
+        probability: totalWeight > 0 ? (type.weight / totalWeight) * 100 : 0
+      }));
+
+      // Sort by probability (descending)
+      possibleTypes.sort((a, b) => b.probability - a.probability);
+
+      // Determine overall confidence
+      const confidence = possibleTypes.length === 1 ? 0.95 : possibleTypes.length <= 3 ? 0.7 : 0.5;
 
       if (possibleTypes.length === 0) {
         elements.hashInput.nextElementSibling.style.display = 'block';
         showToast('No matching hash types found');
-        return [];
+        return { types: [], confidence: 0 };
       }
 
       elements.hashInput.nextElementSibling.style.display = 'none';
       elements.saltInput.nextElementSibling.style.display = 'none';
-      return possibleTypes.map(type => type.name);
+      return {
+        types: possibleTypes,
+        confidence: confidence
+      };
     }
 
-    function displayResult(hashTypes) {
+    function displayResult(hashResult) {
       const resultDiv = elements.result;
       resultDiv.innerHTML = '';
 
-      if (hashTypes.length === 0) {
+      if (hashResult.types.length === 0) {
         resultDiv.innerHTML = '<p>No matching hash types found.</p>';
         return;
       }
 
       const ul = document.createElement('ul');
-      hashTypes.forEach(type => {
+      hashResult.types.forEach(type => {
         const li = document.createElement('li');
-        li.textContent = type;
+        li.innerHTML = `<span>${type.name}</span><span>${type.probability.toFixed(1)}%</span>`;
         ul.appendChild(li);
       });
       resultDiv.appendChild(ul);
 
       const msg = document.createElement('div');
       msg.className = 'generated-msg';
-      msg.textContent = 'Identified!';
+      msg.textContent = `Identified! (${(hashResult.confidence * 100).toFixed(0)}% confidence)`;
       document.body.appendChild(msg);
       setTimeout(() => msg.remove(), 1000);
     }
 
     async function copyResult() {
-      const resultText = elements.result.textContent;
-      if (!resultText || resultText === 'Possible hash types will appear here after identification.') {
+      const resultText = Array.from(elements.result.querySelectorAll('li'))
+        .map(li => li.textContent)
+        .join('\n');
+      if (!resultText || elements.result.textContent === 'Possible hash types will appear here after identification.') {
         showToast('Identify a hash first');
         return;
       }
@@ -471,9 +417,9 @@
       elements.identify.textContent = 'Identifying...';
 
       try {
-        const hashTypes = identifyHash(hash, salt);
-        displayResult(hashTypes);
-        if (hashTypes.length > 0) {
+        const hashResult = identifyHash(hash, salt);
+        displayResult(hashResult);
+        if (hashResult.types.length > 0) {
           addToHistory(hash, salt);
         }
       } catch (error) {
