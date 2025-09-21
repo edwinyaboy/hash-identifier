@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hash Identifier</title>
+  <style>
+    :root {
+      --primary: #4caf50;
+      --primary-hover: #32cd32;
+      --card-bg: rgba(30, 30, 30, 0.95);
+      --text-color: #f0f0f0;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      background: #000;
+      color: var(--text-color);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 40px 20px;
+    }
+
+    .container {
+      background: var(--card-bg);
+      backdrop-filter: blur(8px);
+      padding: 25px;
+      border-radius: 16px;
+      max-width: 650px;
+      width: 100%;
+      box-shadow: 0 10px 30px rgba(0, 255, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      position: relative;
+    }
+
+    h1 {
+      text-align: center;
+      margin: 0 0 10px 0;
+      font-size: 24px;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .input-group label {
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      background: #2a2a2a;
+      color: var(--text-color);
+      font-size: 1rem;
+    }
+
+    textarea {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      background: #2a2a2a;
+      color: var(--text-color);
+      font-size: 1rem;
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    button {
+      padding: 12px;
+      background: linear-gradient(90deg, var(--primary), var(--primary-hover));
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.3s, box-shadow 0.3s;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background: linear-gradient(90deg, var(--primary-hover), var(--primary));
+      box-shadow: 0 0 10px var(--primary-hover);
+    }
+
+    button:focus {
+      outline: 2px solid #fff;
+      outline-offset: 2px;
+    }
+
+    .btn-outline-primary {
+      background: none;
+      border: 2px solid var(--primary);
+      color: var(--primary);
+    }
+
+    .btn-outline-primary:hover {
+      background: linear-gradient(90deg, var(--primary), var(--primary-hover));
+      color: var(--text-color);
+      box-shadow: 0 0 10px var(--primary-hover);
+    }
+
+    .result {
+      background: #2a2a2a;
+      padding: 16px;
+      border-radius: 8px;
+      margin-top: 16px;
+      font-size: 1rem;
+    }
+
+    .result ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .result li {
+      padding: 8px 0;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--primary);
+      color: #000;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-weight: bold;
+      opacity: 0;
+      transition: opacity 0.3s;
+      z-index: 10;
+    }
+
+    .toast.show {
+      opacity: 1;
+    }
+
+    .error-text {
+      color: #f44336;
+      font-size: 0.85rem;
+      margin-top: 4px;
+      display: none;
+    }
+
+    .generated-msg {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      background: var(--primary);
+      color: #000;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-weight: bold;
+      z-index: 10;
+    }
+
+    @media (max-width: 500px) {
+      .container {
+        padding: 16px;
+      }
+
+      h1 {
+        font-size: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Hash Identifier</h1>
+
+    <div class="input-group">
+      <label for="hashInput">Hash</label>
+      <input type="text" id="hashInput" list="hashHistory" placeholder="Enter hash to identify" required aria-label="Enter hash to identify">
+      <datalist id="hashHistory"></datalist>
+      <small class="error-text">Enter a valid hash</small>
+    </div>
+
+    <div class="input-group">
+      <label for="saltInput">Salt (optional)</label>
+      <input type="text" id="saltInput" placeholder="Enter salt if known" aria-label="Enter salt (optional)">
+      <small class="error-text">Invalid salt format</small>
+    </div>
+
+    <div class="flex-row">
+      <button id="identify" aria-label="Identify Hash">Identify Hash</button>
+      <button id="copy" class="btn-outline-primary" aria-label="Copy Result">Copy Result</button>
+    </div>
+
+    <div id="result" class="result">
+      <p>Possible hash types will appear here after identification.</p>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const elements = {
+      identify: document.getElementById('identify'),
+      copy: document.getElementById('copy'),
+      hashInput: document.getElementById('hashInput'),
+      saltInput: document.getElementById('saltInput'),
+      result: document.getElementById('result'),
+      toast: document.getElementById('toast'),
+      hashHistory: document.getElementById('hashHistory')
+    };
+
+    let hashHistory = JSON.parse(localStorage.getItem('hashHistory')) || [];
+
+    function saveHistory() {
+      localStorage.setItem('hashHistory', JSON.stringify(hashHistory));
+    }
+
+    function loadHistory() {
+      elements.hashHistory.innerHTML = '';
+      hashHistory.forEach(entry => {
+        const option = document.createElement('option');
+        option.value = entry.hash;
+        option.textContent = entry.salt ? `${entry.hash} (Salt: ${entry.salt})` : entry.hash;
+        elements.hashHistory.appendChild(option);
+      });
+    }
+
+    function addToHistory(hash, salt) {
+      const entry = { hash, salt: salt || '' };
+      if (!hashHistory.some(e => e.hash === hash && e.salt === salt)) {
+        hashHistory.unshift(entry);
+        if (hashHistory.length > 10) {
+          hashHistory.pop();
+        }
+        saveHistory();
+        loadHistory();
+      }
+    }
+
+    function showToast(message) {
+      elements.toast.textContent = message;
+      elements.toast.classList.add('show');
+      setTimeout(() => elements.toast.classList.remove('show'), 3000);
+    }
+
+    function identifyHash(hash, salt) {
+      const trimmedHash = hash.trim();
+      const trimmedSalt = salt ? salt.trim() : '';
+      
+      if (!trimmedHash) {
+        elements.hashInput.nextElementSibling.style.display = 'block';
+        showToast('Hash is required');
+        return [];
+      }
+
+      // Basic salt validation: allow alphanumeric and common special chars, no length restriction
+      if (trimmedSalt && !/^[A-Za-z0-9+/=.-]*$/.test(trimmedSalt)) {
+        elements.saltInput.nextElementSibling.style.display = 'block';
+        showToast('Invalid salt format');
+        return [];
+      }
+
+      const hashTypes = [
+        { name: 'MD5', length: 32, regex: /^[a-f0-9]{32}$/i, unsalted: true },
+        { name: 'SHA-1', length: 40, regex: /^[a-f0-9]{40}$/i, unsalted: true },
+        { name: 'SHA-224', length: 56, regex: /^[a-f0-9]{56}$/i, unsalted: true },
+        { name: 'SHA-256', length: 64, regex: /^[a-f0-9]{64}$/i, unsalted: true },
+        { name: 'SHA-384', length: 96, regex: /^[a-f0-9]{96}$/i, unsalted: true },
+        { name: 'SHA-512', length: 128, regex: /^[a-f0-9]{128}$/i, unsalted: true },
+        { name: 'SHA3-224', length: 56, regex: /^[a-f0-9]{56}$/i, unsalted: true },
+        { name: 'SHA3-256', length: 64, regex: /^[a-f0-9]{64}$/i, unsalted: true },
+        { name: 'SHA3-384', length: 96, regex: /^[a-f0-9]{96}$/i, unsalted: true },
+        { name: 'SHA3-512', length: 128, regex: /^[a-f0-9]{128}$/i, unsalted: true },
+        { name: 'RIPEMD-160', length: 40, regex: /^[a-f0-9]{40}$/i, unsalted: true },
+        { name: 'Whirlpool', length: 128, regex: /^[a-f0-9]{128}$/i, unsalted: true },
+        { name: 'MySQL 4.1+', length: 40, regex: /^[a-f0-9]{40}$/i, unsalted: true },
+        { name: 'MySQL 3.x', length: 16, regex: /^[a-f0-9]{16}$/i, unsalted: true },
+        { name: 'NTLM', length: 32, regex: /^[a-f0-9]{32}$/i, unsalted: true },
+        { name: 'LM', length: 32, regex: /^[a-f0-9]{32}$/i, unsalted: true },
+        { name: 'CRC32', length: 8, regex: /^[a-f0-9]{8}$/i, unsalted: true },
+        { name: 'Adler32', length: 8, regex: /^[a-f0-9]{8}$/i, unsalted: true },
+        { name: 'bcrypt', length: 60, regex: /^\$2[ayb]\$[0-9]{2}\$[A-Za-z0-9./]{53}$/, salted: true },
+        { name: 'scrypt', length: 0, regex: /^\$s0\$[0-9a-f]{5}\$[A-Za-z0-9+/]{43}\$[A-Za-z0-9+/]{43}$/i, salted: true },
+        { name: 'PBKDF2', length: 64, regex: /^[a-f0-9]{64}$/i, salted: true },
+        { name: 'HMAC-MD5', length: 32, regex: /^[a-f0-9]{32}$/i, salted: true },
+        { name: 'HMAC-SHA1', length: 40, regex: /^[a-f0-9]{40}$/i, salted: true },
+        { name: 'HMAC-SHA256', length: 64, regex: /^[a-f0-9]{64}$/i, salted: true },
+        { name: 'MD4', length: 32, regex: /^[a-f0-9]{32}$/i, unsalted: true },
+        { name: 'MD2', length: 32, regex: /^[a-f0-9]{32}$/i, unsalted: true },
+        { name: 'SHA-0', length: 40, regex: /^[a-f0-9]{40}$/i, unsalted: true },
+        { name: 'RIPEMD-128', length: 32, regex: /^[a-f0-9]{32}$/i, unsalted: true },
+        { name: 'RIPEMD-256', length: 64, regex: /^[a-f0-9]{64}$/i, unsalted: true },
+        { name: 'RIPEMD-320', length: 80, regex: /^[a-f0-9]{80}$/i, unsalted: true },
+        { name: 'HAVAL-128', length: 32, regex: /^[a-f0-9]{32}$/i, unsalted: true },
+        { name: 'HAVAL-160', length: 40, regex: /^[a-f0-9]{40}$/i, unsalted: true },
+        { name: 'HAVAL-192', length: 48, regex: /^[a-f0-9]{48}$/i, unsalted: true },
+        { name: 'HAVAL-224', length: 56, regex: /^[a-f0-9]{56}$/i, unsalted: true },
+        { name: 'HAVAL-256', length: 64, regex: /^[a-f0-9]{64}$/i, unsalted: true },
+        { name: 'GOST', length: 64, regex: /^[a-f0-9]{64}$/i, unsalted: true },
+        { name: 'Tiger-192', length: 48, regex: /^[a-f0-9]{48}$/i, unsalted: true },
+        { name: 'Tiger-160', length: 40, regex: /^[a-f0-9]{40}$/i, unsalted: true },
+        { name: 'Tiger-128', length: 32, regex: /^[a-f0-9]{32}$/i, unsalted: true },
+        { name: 'Skein-512', length: 128, regex: /^[a-f0-9]{128}$/i, unsalted: true },
+        { name: 'BLAKE2b-512', length: 128, regex: /^[a-f0-9]{128}$/i, unsalted: true },
+        { name: 'BLAKE2s-256', length: 64, regex: /^[a-f0-9]{64}$/i, unsalted: true },
+        { name: 'BLAKE3-256', length: 64, regex: /^[a-f0-9]{64}$/i, unsalted: true },
+        { name: 'PANAMA', length: 64, regex: /^[a-f0-9]{64}$/i, unsalted: true },
+        { name: 'SHA-512/224', length: 56, regex: /^[a-f0-9]{56}$/i, unsalted: true },
+        { name: 'SHA-512/256', length: 64, regex: /^[a-f0-9]{64}$/i, unsalted: true },
+        { name: 'SHA2-224', length: 56, regex: /^[a-f0-9]{56}$/i, unsalted: true },
+        { name: 'MySQL323', length: 16, regex: /^[a-f0-9]{16}$/i, unsalted: true },
+        { name: 'md5crypt (Unix)', length: 0, regex: /^\$1\$[A-Za-z0-9./]{1,8}\$[A-Za-z0-9./]{22}$/, salted: true },
+        { name: 'sha512crypt (Unix)', length: 0, regex: /^\$6\$[A-Za-z0-9./]{1,16}\$[A-Za-z0-9./]{86}$/, salted: true },
+        { name: 'descrypt (Unix)', length: 13, regex: /^[A-Za-z0-9./]{13}$/, salted: true },
+        { name: 'Apache $apr1$ MD5', length: 0, regex: /^\$apr1\$[A-Za-z0-9./]{1,8}\$[A-Za-z0-9./]{22}$/, salted: true },
+        { name: 'phpass (WordPress/Joomla)', length: 0, regex: /^\$[PH]\$[A-Za-z0-9./]{31}$/, salted: true },
+        { name: 'Argon2i', length: 0, regex: /^\$argon2i\$v=\d+\$m=\d+,t=\d+,p=\d+\$[A-Za-z0-9+/=]{22}\$[A-Za-z0-9+/=]{43}$/, salted: true },
+        { name: 'Argon2d', length: 0, regex: /^\$argon2d\$v=\d+\$m=\d+,t=\d+,p=\d+\$[A-Za-z0-9+/=]{22}\$[A-Za-z0-9+/=]{43}$/, salted: true },
+        { name: 'Argon2id', length: 0, regex: /^\$argon2id\$v=\d+\$m=\d+,t=\d+,p=\d+\$[A-Za-z0-9+/=]{22}\$[A-Za-z0-9+/=]{43}$/, salted: true },
+        { name: 'Django (SHA-256)', length: 0, regex: /^sha256\$[A-Za-z0-9]+\$[a-f0-9]{64}$/i, salted: true },
+        { name: 'Django (SHA-1)', length: 0, regex: /^sha1\$[A-Za-z0-9]+\$[a-f0-9]{40}$/i, salted: true },
+        { name: 'MSSQL (2000)', length: 0, regex: /^0x0100[a-f0-9]{80}$/i, salted: true },
+        { name: 'MSSQL (2005)', length: 0, regex: /^0x0100[a-f0-9]{80}$/i, salted: true },
+        { name: 'Oracle 11g/12c', length: 0, regex: /^[a-f0-9]{40}:[a-f0-9]{20}$/i, salted: true },
+        { name: 'PostgreSQL MD5', length: 0, regex: /^md5[a-f0-9]{32}$/i, salted: true },
+        { name: 'Salted MD5', length: 0, regex: /^[a-f0-9]{32}:.+$/i, salted: true },
+        { name: 'Salted SHA-256', length: 0, regex: /^[a-f0-9]{64}:.+$/i, salted: true },
+        { name: 'Salted SHA-512', length: 0, regex: /^[a-f0-9]{128}:.+$/i, salted: true },
+        { name: 'Cisco-PIX MD5', length: 16, regex: /^[A-Za-z0-9./]{16}$/, salted: true },
+        { name: 'Cisco-ASA MD5', length: 0, regex: /^[A-Za-z0-9./]{16}$/, salted: true },
+        { name: 'SAP CODVN B (BCODE)', length: 40, regex: /^[a-f0-9]{40}$/i, unsalted: true },
+        { name: 'SAP CODVN F/G (PASSCODE)', length: 40, regex: /^[a-f0-9]{40}$/i, salted: true },
+        { name: 'Lotus Notes/Domino 5', length: 32, regex: /^[a-f0-9]{32}$/i, unsalted: true },
+        { name: 'Lotus Notes/Domino 6', length: 40, regex: /^[a-f0-9]{40}$/i, salted: true },
+        { name: 'BSDi Crypt', length: 0, regex: /^_[A-Za-z0-9./]{19}$/, salted: true },
+        { name: 'Juniper Netscreen/SSG', length: 0, regex: /^[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+$/i, salted: true },
+        { name: 'FortiGate (FortiOS)', length: 47, regex: /^[A-Za-z0-9+/=]{47}$/, salted: true },
+        { name: 'Samsung Android Password/PIN', length: 0, regex: /^[a-f0-9]{40}\*[0-9]{1,}$/i, salted: true },
+        { name: 'PeopleSoft', length: 28, regex: /^[A-Za-z0-9+/=]{28}$/, salted: true },
+        { name: '7-Zip', length: 0, regex: /^\$7z\$[0-9]+\$[0-9]+\$[0-9]+\$[0-9]+\$[0-9]+\$[0-9]+\$[A-Za-z0-9+/=]+\$[A-Za-z0-9+/=]+$/i, salted: true },
+        { name: 'RAR3-hp', length: 0, regex: /^\$rar3\$[0-9]+\*[A-Za-z0-9+/=]+\*[A-Za-z0-9+/=]+$/i, salted: true },
+        { name: 'Kerberos 5 AS-REQ Pre-Auth', length: 0, regex: /^\$krb5pa\$[0-9]+\$[A-Za-z0-9.]+\$[A-Za-z0-9+/=]+\$[A-Za-z0-9+/=]+$/i, salted: true },
+        { name: 'NetNTLMv1', length: 0, regex: /^[a-f0-9]{48}$/i, salted: true },
+        { name: 'NetNTLMv2', length: 0, regex: /^[A-Za-z0-9]+\$[a-f0-9]{16}\$[a-f0-9]{32}\$[a-f0-9]{32}$/i, salted: true },
+        { name: 'iSCSI CHAP', length: 0, regex: /^[a-f0-9]{32}:[a-f0-9]{32}:[a-f0-9]{32}$/i, salted: true },
+        { name: 'WPA-PBKDF2-PMKID', length: 0, regex: /^[a-f0-9]{256}$/i, salted: true },
+        { name: 'RACF', length: 16, regex: /^[a-f0-9]{16}$/i, unsalted: true },
+        { name: 'GRUB 2', length: 0, regex: /^grub\.pbkdf2\.sha512\.[0-9]+\.[a-f0-9]+\.[a-f0-9]+$/i, salted: true },
+        { name: 'DPAPI masterkey file v1', length: 0, regex: /^\$DPAPI\$v1\$[a-f0-9]+\$[a-f0-9]+\$[a-f0-9]+\$[a-f0-9]+$/i, salted: true },
+        { name: 'macOS v10.8+', length: 0, regex: /^\$ml\$[0-9]+\$[a-f0-9]{128}\$[a-f0-9]{96}$/i, salted: true },
+        { name: 'SIP digest authentication (MD5)', length: 32, regex: /^[a-f0-9]{32}$/i, salted: true },
+        { name: 'Cram MD5', length: 0, regex: /^\$[a-f0-9]{32}\$[a-f0-9]{32}$/i, salted: true },
+        { name: 'JWT (JSON Web Token)', length: 0, regex: /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/i, salted: true },
+        { name: 'Electrum Wallet', length: 0, regex: /^\$electrum\$[0-9]+\$[a-f0-9]+\$[a-f0-9]+$/i, salted: true },
+        { name: 'Android Backup', length: 0, regex: /^\$ab\$[0-9]+\$[a-f0-9]+\$[a-f0-9]+$/i, salted: true },
+        { name: 'CRC32B', length: 8, regex: /^[a-f0-9]{8}$/i, unsalted: true },
+        { name: 'FNV-1', length: 8, regex: /^[a-f0-9]{8}$/i, unsalted: true },
+        { name: 'MurmurHash3', length: 8, regex: /^[a-f0-9]{8}$/i, unsalted: true },
+        { name: 'xxHash32', length: 8, regex: /^[a-f0-9]{8}$/i, unsalted: true },
+        { name: 'xxHash64', length: 16, regex: /^[a-f0-9]{16}$/i, unsalted: true },
+        { name: 'Joomla < 2.5.18', length: 0, regex: /^[a-f0-9]{32}:[A-Za-z0-9]{32}$/i, salted: true },
+        { name: 'osCommerce', length: 0, regex: /^[a-f0-9]{32}:[A-Za-z0-9]{2}$/i, salted: true },
+        { name: 'IPB2+ (Invision Power Board)', length: 0, regex: /^[a-f0-9]{32}:[a-f0-9]{8}$/i, salted: true },
+        { name: 'MyBB', length: 0, regex: /^[a-f0-9]{32}:[a-f0-9]{8}$/i, salted: true },
+        { name: 'vBulletin < 3.8.5', length: 32, regex: /^[a-f0-9]{32}$/i, salted: true },
+        { name: 'SMF > v1.1', length: 40, regex: /^[a-f0-9]{40}:[a-f0-9]{1,}$/i, salted: true },
+        { name: 'Redmine', length: 40, regex: /^[a-f0-9]{40}:[a-f0-9]{8,}$/i, salted: true },
+        { name: 'ArubaOS', length: 64, regex: /^[a-f0-9]{64}$/i, unsalted: true },
+        { name: 'Cisco-IOS SHA256', length: 0, regex: /^\$5\$[A-Za-z0-9+/=]+\$[A-Za-z0-9+/=]+$/i, salted: true },
+        { name: 'Cisco-IOS $8$ (PBKDF2-SHA256)', length: 0, regex: /^\$8\$[A-Za-z0-9+/=]+\$[A-Za-z0-9+/=]+$/i, salted: true },
+        { name: 'Cisco-IOS $9$ (scrypt)', length: 0, regex: /^\$9\$[A-Za-z0-9+/=]+$/i, salted: true },
+        { name: 'SolarWinds Serv-U', length: 32, regex: /^[a-f0-9]{32}$/i, salted: true },
+        { name: 'Half MD5', length: 16, regex: /^[a-f0-9]{16}$/i, unsalted: true },
+        { name: 'Netscape LDAP SHA/SSHA', length: 0, regex: /^\{SHA\}[A-Za-z0-9+/=]{28}$/i, salted: true },
+        { name: 'SSHA-256 (LDAP)', length: 0, regex: /^\{SSHA256\}[A-Za-z0-9+/=]{44}$/i, salted: true },
+        { name: 'SSHA-512 (LDAP)', length: 0, regex: /^\{SSHA512\}[A-Za-z0-9+/=]{88}$/i, salted: true },
+        { name: 'Domain Cached Credentials (DCC)', length: 0, regex: /^[a-f0-9]{32}:[A-Za-z0-9]+$/i, salted: true },
+        { name: 'md5($pass.$salt)', length: 0, regex: /^[a-f0-9]{32}:.+$/i, salted: true },
+        { name: 'sha1($pass.$salt)', length: 0, regex: /^[a-f0-9]{40}:.+$/i, salted: true },
+        { name: 'sha256($pass.$salt)', length: 0, regex: /^[a-f0-9]{64}:.+$/i, salted: true },
+        { name: 'sha512($pass.$salt)', length: 0, regex: /^[a-f0-9]{128}:.+$/i, salted: true },
+        { name: 'HMAC-SHA512 (key = $pass)', length: 0, regex: /^[a-f0-9]{128}:.+$/i, salted: true },
+        { name: 'PBKDF2-HMAC-SHA256', length: 0, regex: /^sha256:[0-9]+:[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+$/i, salted: true },
+        { name: 'PBKDF2-HMAC-SHA512', length: 0, regex: /^sha512:[0-9]+:[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+$/i, salted: true },
+        { name: 'Drupal7', length: 0, regex: /^\$S\$[A-Za-z0-9./]{52}$/, salted: true },
+        { name: 'Episerver', length: 0, regex: /^\$episerver\$\*0\*[A-Za-z0-9+/=]+\*[A-Za-z0-9+/=]+$/i, salted: true },
+        { name: 'hMailServer', length: 0, regex: /^[a-f0-9]{40}:[a-f0-9]{8}$/i, salted: true },
+        { name: 'Skype', length: 0, regex: /^[a-f0-9]{32}:.+$/i, salted: true }
+      ];
+
+      const possibleTypes = hashTypes.filter(type => {
+        // If salt is provided, only consider salted hash types
+        if (trimmedSalt && !type.salted) return false;
+        // If no salt is provided, only consider unsalted hash types or formats that embed salt
+        if (!trimmedSalt && type.salted && !type.regex.source.includes('\\$') && !type.regex.source.includes(':')) return false;
+        return (type.length === 0 || type.length === trimmedHash.length) && type.regex.test(trimmedHash);
+      });
+
+      if (possibleTypes.length === 0) {
+        elements.hashInput.nextElementSibling.style.display = 'block';
+        showToast('No matching hash types found');
+        return [];
+      }
+
+      elements.hashInput.nextElementSibling.style.display = 'none';
+      elements.saltInput.nextElementSibling.style.display = 'none';
+      return possibleTypes.map(type => type.name);
+    }
+
+    function displayResult(hashTypes) {
+      const resultDiv = elements.result;
+      resultDiv.innerHTML = '';
+
+      if (hashTypes.length === 0) {
+        resultDiv.innerHTML = '<p>No matching hash types found.</p>';
+        return;
+      }
+
+      const ul = document.createElement('ul');
+      hashTypes.forEach(type => {
+        const li = document.createElement('li');
+        li.textContent = type;
+        ul.appendChild(li);
+      });
+      resultDiv.appendChild(ul);
+
+      const msg = document.createElement('div');
+      msg.className = 'generated-msg';
+      msg.textContent = 'Identified!';
+      document.body.appendChild(msg);
+      setTimeout(() => msg.remove(), 1000);
+    }
+
+    async function copyResult() {
+      const resultText = elements.result.textContent;
+      if (!resultText || resultText === 'Possible hash types will appear here after identification.') {
+        showToast('Identify a hash first');
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(resultText);
+        const msg = document.createElement('div');
+        msg.className = 'generated-msg';
+        msg.textContent = 'Copied!';
+        document.body.appendChild(msg);
+        setTimeout(() => msg.remove(), 1000);
+      } catch (error) {
+        showToast('Failed to copy result: ' + error.message);
+      }
+    }
+
+    function identify() {
+      const hash = elements.hashInput.value;
+      const salt = elements.saltInput.value;
+      elements.identify.disabled = true;
+      elements.identify.textContent = 'Identifying...';
+
+      try {
+        const hashTypes = identifyHash(hash, salt);
+        displayResult(hashTypes);
+        if (hashTypes.length > 0) {
+          addToHistory(hash, salt);
+        }
+      } catch (error) {
+        showToast('Error identifying hash: ' + error.message);
+      } finally {
+        elements.identify.disabled = false;
+        elements.identify.textContent = 'Identify Hash';
+      }
+    }
+
+    loadHistory();
+
+    elements.identify.addEventListener('click', identify);
+    elements.copy.addEventListener('click', copyResult);
+    elements.hashInput.addEventListener('keypress', e => {
+      if (e.key === 'Enter') identify();
+    });
+    elements.saltInput.addEventListener('keypress', e => {
+      if (e.key === 'Enter') identify();
+    });
+  </script>
+</body>
+</html>
